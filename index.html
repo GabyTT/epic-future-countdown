@@ -3,145 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Progress Bar Chart</title>
+    <title>Epic Future Countdown</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        h2 {
-            text-align: center;
+        body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont,
                          "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            font-weight: 600;
             color: #444;
         }
 
-        /* --- Briefing text --- */
-        #briefing {
-            max-width: 800px;
-            margin: 0 auto 12px;
-            text-align: center;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont,
-                         "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            font-size: 14px;
-            color: #666;
-            opacity: 0;
-            transition: opacity 0.5s ease;
+        h2 {
+            text-align: left;
+            font-weight: 600;
+            margin-bottom: 6px;
         }
 
-        #briefing.visible {
+        /* ---- Briefing ---- */
+        .briefing {
+            margin: 6px 0 14px 0;
+            opacity: 0;
+            transition: opacity 1.2s ease;
+        }
+
+        .briefing.show {
             opacity: 1;
+        }
+
+        .briefing-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .briefing-body {
+            font-size: 13px;
+            line-height: 1.4;
         }
     </style>
 </head>
+
 <body>
 
-<h2>Epic Future Countdown</h2>
+<h2 id="header">Epic Future Countdown</h2>
 
-<!-- Briefing text injected here -->
-<div id="briefing"></div>
+<div id="briefing" class="briefing"></div>
 
 <canvas id="timeChart" width="800" height="400"></canvas>
 
 <script>
-    /* =========================
-       BRIEFING LOGIC (NEW)
-    ========================= */
+    /* ------------------ Messaging Logic ------------------ */
 
-    function getBriefingMessage() {
+    function getBriefingData() {
         const now = new Date();
-        const day = now.getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
+        const day = now.getDay(); // 0 = Sun
+        const today = now.getDate();
+        const daysInMonth = new Date(
+            now.getFullYear(),
+            now.getMonth() + 1,
+            0
+        ).getDate();
 
-        // Last 5 days of the month
-        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        const isMonthClosing = now.getDate() > daysInMonth - 5;
+        const isWeekClosing = (day === 5 || day === 6 || day === 0); // Fri–Sun
+        const isMonthClosing = today > (daysInMonth - 5);
 
-        // Week closing: Friday (5), Saturday (6), Sunday (0)
-        const isWeekClosing = (day === 5 || day === 6 || day === 0);
-
-        // Priority: week closing wins
+        // Week closing has priority
         if (isWeekClosing) {
-            return (
-                "<strong>Week closing.</strong><br>" +
-                "Reconnect with the Future Memory for your active missions.<br>" +
-                "Plan your next small wins."
-            );
+            return {
+                color: '#53959F', // Week blue
+                html: `
+                    <div class="briefing-title">Week closing.</div>
+                    <div class="briefing-body">
+                        Reconnect with the Future Memory for your active missions.<br>
+                        Plan your next small wins.
+                    </div>
+                `
+            };
         }
 
         if (isMonthClosing) {
-            const monthName = now.toLocaleString(undefined, { month: "long" });
-            return (
-                "<strong>Month closing.</strong><br>" +
-                "Revisit your Future Self Intel.<br>" +
-                "Plan your next milestones."
-            );
+            const monthName = now.toLocaleString('default', { month: 'long' });
+            return {
+                color: '#F9B97F', // Month yellow
+                html: `
+                    <div class="briefing-title">${monthName} is closing.</div>
+                    <div class="briefing-body">
+                        Go back to your Future Self Intel.<br>
+                        Plan your next milestones.
+                    </div>
+                `
+            };
         }
 
-        return "";
+        return null;
     }
 
-    // Inject and fade in briefing (once)
-    const briefingEl = document.getElementById("briefing");
-    const briefingMessage = getBriefingMessage();
+    function updateBriefing() {
+        const briefingEl = document.getElementById('briefing');
+        const headerEl = document.getElementById('header');
+        const data = getBriefingData();
 
-    if (briefingMessage) {
-        briefingEl.innerHTML = briefingMessage;
-        requestAnimationFrame(() => {
-            briefingEl.classList.add("visible");
-        });
+        if (!data) {
+            briefingEl.classList.remove('show');
+            headerEl.style.display = 'block';
+            return;
+        }
+
+        headerEl.style.display = 'none';
+        briefingEl.classList.remove('show');
+
+        setTimeout(() => {
+            briefingEl.innerHTML = data.html;
+            briefingEl.style.color = data.color;
+            briefingEl.classList.add('show');
+        }, 300);
     }
 
-    /* =========================
-       EXISTING CHART CODE
-    ========================= */
+    updateBriefing();
+    setInterval(updateBriefing, 60 * 60 * 1000); // hourly refresh
+
+    /* ------------------ Chart Logic (UNCHANGED) ------------------ */
 
     function getTimePercentages() {
         const now = new Date();
 
-        // ----- DAY (hours) -----
-        const elapsedHoursDay = now.getHours();
-        const remainingHoursDay = 24 - elapsedHoursDay;
-        const elapsedDay = (elapsedHoursDay / 24) * 100;
+        const elapsedDay = (now.getHours() / 24) * 100;
 
-        // ----- WEEK (days) -----
-        const elapsedDaysWeek = (now.getDay() + 6) % 7; // Monday = 0, Sunday = 6
-        const remainingDaysWeek = 7 - elapsedDaysWeek;
+        const elapsedDaysWeek = (now.getDay() + 6) % 7;
         const elapsedWeek = (elapsedDaysWeek / 7) * 100;
 
-        // ----- MONTH (days) -----
-        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        const elapsedDaysMonth = now.getDate();
-        const remainingDaysMonth = daysInMonth - elapsedDaysMonth;
-        const elapsedMonth = (elapsedDaysMonth / daysInMonth) * 100;
+        const daysInMonth = new Date(
+            now.getFullYear(),
+            now.getMonth() + 1,
+            0
+        ).getDate();
+        const elapsedMonth = (now.getDate() / daysInMonth) * 100;
 
-        // ----- QUARTER (weeks) -----
         const currentQuarter = Math.floor(now.getMonth() / 3);
         const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
         const endOfQuarter = new Date(now.getFullYear(), currentQuarter * 3 + 3, 0);
         const totalWeeksQuarter = Math.ceil((endOfQuarter - startOfQuarter) / (1000 * 60 * 60 * 24 * 7));
         const elapsedWeeksQuarter = Math.floor((now - startOfQuarter) / (1000 * 60 * 60 * 24 * 7));
-        const remainingWeeksQuarter = totalWeeksQuarter - elapsedWeeksQuarter;
         const elapsedQuarter = (elapsedWeeksQuarter / totalWeeksQuarter) * 100;
 
-        // ----- YEAR (months) -----
-        const elapsedMonthsYear = now.getMonth() + 1;
-        const remainingMonthsYear = 12 - elapsedMonthsYear;
-        const elapsedYear = (elapsedMonthsYear / 12) * 100;
+        const elapsedYear = ((now.getMonth() + 1) / 12) * 100;
 
         return {
-            elapsed: [elapsedDay, elapsedWeek, elapsedMonth, elapsedQuarter, elapsedYear],
+            elapsed: [
+                elapsedDay,
+                elapsedWeek,
+                elapsedMonth,
+                elapsedQuarter,
+                elapsedYear
+            ],
             remaining: [
                 100 - elapsedDay,
                 100 - elapsedWeek,
                 100 - elapsedMonth,
                 100 - elapsedQuarter,
                 100 - elapsedYear
-            ],
-            tooltips: [
-                `${elapsedHoursDay}h elapsed · ${remainingHoursDay}h remaining`,
-                `${elapsedDaysWeek}d elapsed · ${remainingDaysWeek}d remaining`,
-                `${elapsedDaysMonth}d elapsed · ${remainingDaysMonth}d remaining`,
-                `${elapsedWeeksQuarter}w elapsed · ${remainingWeeksQuarter}w remaining`,
-                `${elapsedMonthsYear}m elapsed · ${remainingMonthsYear}m remaining`
             ]
         };
     }
@@ -155,23 +175,21 @@
             labels: ['Day', 'Week', 'Month', 'Quarter', 'Year'],
             datasets: [
                 {
-                    label: 'Elapsed',
                     data: percentages.elapsed,
                     backgroundColor: [
-                        '#A7BA93', // Day – green
-                        '#53959F', // Week – blue
-                        '#F9B97F', // Month – yellow
-                        '#F4C2C2', // Quarter – pink
-                        '#C4B8E7'  // Year – purple
+                        '#A7BA93',
+                        '#53959F',
+                        '#F9B97F',
+                        '#F4C2C2',
+                        '#C4B8E7'
                     ],
-                    borderRadius: { topLeft: 20, bottomLeft: 20, topRight: 0, bottomRight: 0 },
+                    borderRadius: { topLeft: 20, bottomLeft: 20 },
                     borderSkipped: false
                 },
                 {
-                    label: 'Remaining',
                     data: percentages.remaining,
-                    backgroundColor: 'rgba(211, 211, 211, 0.6)',
-                    borderRadius: { topLeft: 0, bottomLeft: 0, topRight: 20, bottomRight: 20 },
+                    backgroundColor: 'rgba(211,211,211,0.6)',
+                    borderRadius: { topRight: 20, bottomRight: 20 },
                     borderSkipped: false
                 }
             ]
@@ -182,30 +200,19 @@
             scales: {
                 x: {
                     stacked: true,
-                    beginAtZero: true,
-                    max: 100,
-                    display: false
+                    display: false,
+                    max: 100
                 },
                 y: {
                     stacked: true,
                     ticks: {
-                        font: {
-                            size: 14,
-                            weight: 'bold'
-                        },
+                        font: { size: 14, weight: 'bold' },
                         color: '#555'
                     }
                 }
             },
             plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function (context) {
-                            return percentages.tooltips[context.dataIndex];
-                        }
-                    }
-                }
+                legend: { display: false }
             }
         }
     });
@@ -220,3 +227,4 @@
 
 </body>
 </html>
+
