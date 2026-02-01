@@ -14,14 +14,86 @@
             font-weight: 600;
             color: #444;
         }
+
+        /* --- Briefing text --- */
+        #briefing {
+            max-width: 800px;
+            margin: 0 auto 12px;
+            text-align: center;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont,
+                         "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            color: #666;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #briefing.visible {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
 
 <h2>Epic Future Countdown</h2>
+
+<!-- Briefing text injected here -->
+<div id="briefing"></div>
+
 <canvas id="timeChart" width="800" height="400"></canvas>
 
 <script>
+    /* =========================
+       BRIEFING LOGIC (NEW)
+    ========================= */
+
+    function getBriefingMessage() {
+        const now = new Date();
+        const day = now.getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
+
+        // Last 5 days of the month
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const isMonthClosing = now.getDate() > daysInMonth - 5;
+
+        // Week closing: Friday (5), Saturday (6), Sunday (0)
+        const isWeekClosing = (day === 5 || day === 6 || day === 0);
+
+        // Priority: week closing wins
+        if (isWeekClosing) {
+            return (
+                "<strong>Week closing.</strong><br>" +
+                "Reconnect with the Future Memory for your active missions.<br>" +
+                "Plan your next small wins."
+            );
+        }
+
+        if (isMonthClosing) {
+            const monthName = now.toLocaleString(undefined, { month: "long" });
+            return (
+                "<strong>Month closing.</strong><br>" +
+                "Revisit your Future Self Intel.<br>" +
+                "Plan your next milestones."
+            );
+        }
+
+        return "";
+    }
+
+    // Inject and fade in briefing (once)
+    const briefingEl = document.getElementById("briefing");
+    const briefingMessage = getBriefingMessage();
+
+    if (briefingMessage) {
+        briefingEl.innerHTML = briefingMessage;
+        requestAnimationFrame(() => {
+            briefingEl.classList.add("visible");
+        });
+    }
+
+    /* =========================
+       EXISTING CHART CODE
+    ========================= */
+
     function getTimePercentages() {
         const now = new Date();
 
@@ -31,10 +103,9 @@
         const elapsedDay = (elapsedHoursDay / 24) * 100;
 
         // ----- WEEK (days) -----
-const elapsedDaysWeek = (now.getDay() + 6) % 7; // Monday = 0, Sunday = 6
-const remainingDaysWeek = 7 - elapsedDaysWeek;
-const elapsedWeek = (elapsedDaysWeek / 7) * 100;
-
+        const elapsedDaysWeek = (now.getDay() + 6) % 7; // Monday = 0, Sunday = 6
+        const remainingDaysWeek = 7 - elapsedDaysWeek;
+        const elapsedWeek = (elapsedDaysWeek / 7) * 100;
 
         // ----- MONTH (days) -----
         const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
