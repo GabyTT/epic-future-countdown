@@ -50,7 +50,7 @@
 <canvas id="timeChart" width="800" height="400"></canvas>
 
 <script>
-/* ------------------ Messaging Logic (unchanged) ------------------ */
+/* ------------------ Messaging Logic ------------------ */
 
 function getBriefingData() {
     const now = new Date();
@@ -141,8 +141,8 @@ function getTimeData() {
     const elapsedWeeksQuarter = Math.floor((now - startOfQuarter) / (1000 * 60 * 60 * 24 * 7));
     const remainingWeeksQuarter = totalWeeksQuarter - elapsedWeeksQuarter;
 
-    // Year (months)
-    const elapsedMonthsYear = now.getMonth() + 1;
+    // Year (COMPLETED months only)
+    const elapsedMonthsYear = now.getMonth(); // Jan=0, Feb=1
     const remainingMonthsYear = 12 - elapsedMonthsYear;
 
     return {
@@ -224,5 +224,6 @@ setInterval(() => {
 
 </body>
 </html>
+
 
 
